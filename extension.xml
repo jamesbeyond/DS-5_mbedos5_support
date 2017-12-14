@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<os id="com.arm.debug.os.mbedos5" version="5.15" xmlns='https://os.mbed.com/'>
+  <name>mbedos5.title</name>
+  <logo>mbedos5_Logo.png</logo>
+  <description>mbedos5.desc</description>
+  <provider>provider.py</provider>
+  <match arch="ARMv6M"/>
+  <match arch="ARMv7M"/>
+</os>
