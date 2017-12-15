@@ -20,9 +20,9 @@ def getDataModel():
 
 def isOSInitialised(debugger):
     try:
-        return debugger.evaluateExpression("os_running").readAsNumber() == 1
+        return debugger.evaluateExpression("osRtxInfo.kernel.state").readAsNumber() >= 1
     except DebugSessionException:
         return False;
 
 def areOSSymbolsLoaded(debugger):
-    return debugger.symbolExists("os_active_TCB")
+    return debugger.symbolExists("osRtxInfo")
