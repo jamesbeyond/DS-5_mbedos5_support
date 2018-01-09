@@ -22,28 +22,28 @@ class Tasks(Table):
     def readTask(self, taskControlBlock, debugger):
         members = taskControlBlock.getStructureMembers();
 
-        cells = [makeNumberCell(members, "task_id"),
-                 makeNameCell(members, "ptask"),
-                 makeNumberCell(members, "prio"),
+        cells = [makeNumberCell(members, "id"),
+                 makeNameCell(members, "name"),
+                 makeNumberCell(members, "priority"),
                  makeStateCell(members, TASK_STATE_NAMES, "state"),
                  makeDelayCell(members),
-                 makeNumberCell(members, "events"),
-                 makeNumberCell(members, "waits"),
-                 makeControlBlockCell(members, "p_rlnk", debugger)]
+                 makeNumberCell(members, "context"),
+                 makeNumberCell(members, "wait_flags"),
+                 makeControlBlockCell(members, "thread_prev", debugger)                 ]
 
         return self.createRecord(cells)
 
     def getRecords(self, debugSession):
-        idleTCB = debugSession.evaluateExpression("os_idle_TCB")
+        idleTCB = debugSession.evaluateExpression("_main_obj")
         records = [self.readTask(idleTCB, debugSession)]
 
-        activeTCB = debugSession.evaluateExpression("os_active_TCB")
-        elements = activeTCB.getArrayElements()
+        # activeTCB = debugSession.evaluateExpression("_main_stack")
+        # elements = activeTCB.getArrayElements()
 
-        for pointer in elements:
-            if pointer.readAsNumber() != 0:
-                record = self.readTask(pointer.dereferencePointer("P_TCB"), debugSession)
-                records.append(record)
+        # for pointer in elements:
+            # if pointer.readAsNumber() != 0:
+                # record = self.readTask(pointer.dereferencePointer("P_TCB"), debugSession)
+                # records.append(record)
 
         return records
 
@@ -58,14 +58,14 @@ def makeDelayCell(members):
      # in the list has its delta_time member set to the number of milliseconds until the
      # *next* task in the list is due to expire. To calculate the delay for a given task
      # it is required to sum the delta_time members of all previous tasks in the delay list.
-    delayListPtr = members["p_blnk"]
+    delayListPtr = members["thread_next"]
     delay = 0
 
     while (delayListPtr.readAsNumber() != 0):
         previous = delayListPtr.dereferencePointer()
         previousMembers = previous.getStructureMembers()
-        delay += previousMembers["delta_time"].readAsNumber()
-        delayListPtr = previousMembers["p_blnk"]
+        delay += previousMembers["delay"].readAsNumber()
+        delayListPtr = previousMembers["thread_next"]
 
     if (delay > 0):
         cell = createNumberCell(delay)
@@ -80,7 +80,7 @@ def makeNameCell(members, name):
     location = member.resolveAddressAsString()
     index = location.find("+")
     if(index != -1):
-        location = str(location)[0, index]
+        location = str(location)[0:index]
     return createTextCell(location)
 
 def makeControlBlockCell(members, name, debugger):
@@ -89,7 +89,7 @@ def makeControlBlockCell(members, name, debugger):
         return createTextCell("")
     memberVal = pointerToControlBlock.dereferencePointer("P_TCB")
     members = memberVal.getStructureMembers()
-    memberVal = members["cb_type"]
+    memberVal = members["attr"]
     controlBlockStateVal = memberVal.readAsNumber()
     if controlBlockStateVal == Tasks.CONTROL_BLOCK_TYPE:
         return makeControlBlockCell(members, name, debugger)

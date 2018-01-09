@@ -10,12 +10,16 @@ class System(Table):
         Table.__init__(self, id, fields)
 
     def getRecords(self, debugSession):
+        os_id = debugSession.evaluateExpression("osRtxInfo.os_id").readAsNullTerminatedString()
+        os_version = debugSession.evaluateExpression("osRtxInfo.version").readAsNumber()
         clockrate = debugSession.evaluateExpression("osRtxConfig.tick_freq").readAsNumber()
         # stackinfo = debugSession.evaluateExpression("os_stackinfo").readAsNumber()
         os_stack_sz = debugSession.evaluateExpression("osRtxConfig.thread_stack_size").readAsNumber()
         timeout = debugSession.evaluateExpression("osRtxConfig.robin_timeout").readAsNumber()
 
-        records = [self.buildRecord("system.record.clockrate", clockrate)]
+        records = [self.buildRecord("system.record.os_id", os_id)]
+        records.append(self.buildRecord("system.record.os_version", os_version))
+        records.append(self.buildRecord("system.record.clockrate", clockrate))
         # records.append(self.buildRecord("system.record.default_stack_info", toHex(stackinfo & 0xFFFF)))
         records.append(self.buildRecord("system.record.timeout", timeout))
         # records.append(self.buildRecord("system.record.private_stack_info", ((stackinfo >> 16) & 0xFF)))
