@@ -1,18 +1,15 @@
-# Copyright (C) 2013-2015 ARM Limited. All rights reserved.
+# Copyright (C) 2013-2015,2017,2018 Arm Limited (or its affiliates). All rights reserved.
 
 from osapi import *
-from utils import getStateName
-
-TASK_STATE_NAMES = ["INACTIVE",      # 0
-                    "READY",         # 1
-                    "RUNNING",       # 2
-                    "WAIT_DLY",      # 3
-                    "WAIT_ITV",      # 4
-                    "WAIT_OR",       # 5
-                    "WAIT_AND",      # 6
-                    "WAIT_SEM",      # 7
-                    "WAIT_MBX",      # 8
-                    "WAIT_MUT"]      # 9
+from utils import getTaskId
+from utils import getDisplayableTaskId
+from utils import getTaskState
+from utils import getActiveTasks
+from utils import getCurrentTask
+from utils import dereferenceThreadPointer
+from utils import getSimpleName
+from utils import isNullPtr
+from utils import nonNullPtr
 
 BASIC_REGISTERS_MAP = {"R4" : 0L,
                        "R5" : 4L,
@@ -283,28 +280,16 @@ NEON_REGISTERS_MAP = {"S0": 128L,
 class ContextsProvider(ExecutionContextsProvider):
 
     def getCurrentOSContext(self, debugger):
-        pointer = debugger.evaluateExpression("os_tsk.run");
+        tcbPtr = getCurrentTask(debugger)
+
         # Synthesises a "NULL" task in this case
-        if pointer.readAsNumber() == 0 :
-            state = getStateName(TASK_STATE_NAMES, 2)
-            return ExecutionContext(-1, "NULL", state)
+        if isNullPtr(tcbPtr):
+            return ExecutionContext(-1, "NULL", getTaskState(2))
         else:
-            tcb = pointer.dereferencePointer()
-            return self.createContextFromTaskControlBlock(debugger, tcb)
+            return self.createContextFromTaskControlBlock(debugger, tcbPtr)
 
     def getAllOSContexts(self, debugger):
-        idleTCB = debugger.evaluateExpression("os_idle_TCB")
-        contexts = [self.createContextFromTaskControlBlock(debugger, idleTCB)]
-
-        tcb = debugger.evaluateExpression("os_active_TCB")
-        elements = tcb.getArrayElements()
-
-        for pointer in elements:
-            if pointer.readAsNumber() != 0:
-                tcb = pointer.dereferencePointer("P_TCB")
-                contexts.append(self.createContextFromTaskControlBlock(debugger, tcb))
-
-        return contexts
+        return list(map(lambda ptr: self.createContextFromTaskControlBlock(debugger, ptr), getActiveTasks(debugger)))
 
     def getOSContextSavedRegister(self, debugger, context, name):
         offset = context.getAdditionalData()["register_map"].get(name, None)
@@ -320,14 +305,16 @@ class ContextsProvider(ExecutionContextsProvider):
         else:
             return debugger.evaluateExpression("(long*)" + str(base))
 
-    def createContextFromTaskControlBlock(self, debugger, tcb):
-        members = tcb.getStructureMembers()
-        id = members["task_id"].readAsNumber()
-        name = members["ptask"].resolveAddressAsString()
-        state = getStateName(TASK_STATE_NAMES, members.get("state").readAsNumber())
-        context = ExecutionContext(id, name, state)
+    def createContextFromTaskControlBlock(self, debugger, tcbPtr):
+        members = dereferenceThreadPointer(tcbPtr).getStructureMembers()
 
-        stackPointer = members["tsk_stack"].readAsAddress()
+        id      = getTaskId(tcbPtr, members)
+        name    = getSimpleName(members,"thread_addr")
+        state   = getTaskState(members["state"].readAsNumber())
+
+        context = ExecutionContext(id, name, state, getDisplayableTaskId(tcbPtr, members))
+
+        stackPointer = members["sp"].readAsAddress()
         context.getAdditionalData()["tsk_stack"] = stackPointer
 
         stackFrame = members["stack_frame"].readAsNumber()
@@ -344,3 +331,11 @@ class ContextsProvider(ExecutionContextsProvider):
             return NEON_REGISTERS_MAP
         else:
             return BASIC_REGISTERS_MAP
+
+    def getNonGlobalRegisterNames(self):
+        result = set()
+        result.update(BASIC_REGISTERS_MAP.keys())
+        result.update(EXTENDED_REGISTERS_MAP.keys())
+        result.update(FP_REGISTERS_MAP.keys())
+        result.update(NEON_REGISTERS_MAP.keys())
+        return result
