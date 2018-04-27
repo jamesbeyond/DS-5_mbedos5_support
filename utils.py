@@ -1,70 +1,45 @@
 # Copyright (C) 2013,2015 ARM Limited. All rights reserved.
 
 from osapi import *
-from rtxInfoV5 import RtxInfoV5
+from rtxInfo import Rtx5
 from rtxIterator import *
 
-RTX_DATA_MODEL = RtxInfoV5()
 
-def getKernelState(dbg):
-    return RTX_DATA_MODEL.getKernelState(dbg)
-
-def getControlBlockIdentifiers():
-    return RTX_DATA_MODEL.getControlBlockIdentifiers()
-    
 def getControlBlockId(cbName):
-    return getControlBlockIdentifiers()[cbName]
+    return Rtx5.getControlBlockIdentifiers()[cbName]
 
 def getControlBlockName(cbId):
-    return next((name for (name, id) in getControlBlockIdentifiers().items() if id == cbId), None)
+    return next((name for (name, id) in Rtx5.getControlBlockIdentifiers().items() if id == cbId), None)
 
 def getControlBlockIdentifierFromPointer(cbPtr):
     return getControlBlockName(getPtrMemBers(cbPtr)["id"].readAsNumber())
 
 def isThreadControlBlock(cbPtr):
-    return getControlBlockIdentifiers()['Thread'] == getPtrMemBers(cbPtr)["id"].readAsNumber()
+    return Rtx5.getControlBlockIdentifiers()['Thread'] == getPtrMemBers(cbPtr)["id"].readAsNumber()
 
 def makeNumberCell(members, name):
     return createNumberCell(members[name].readAsNumber() if (name in members) else None)
 
-def getCType(cbName):
-    return RTX_DATA_MODEL.getCType(cbName)
-
-def getCurrentTask(dbg):
-    return RTX_DATA_MODEL.getCurrentTask(dbg)
-
-def getTaskIdType():
-    return RTX_DATA_MODEL.getTaskIdType()
-
-def getActiveTasks(dbg):
-    return RTX_DATA_MODEL.getActiveTasks(dbg)
-
-def getTaskId(tcbPtr, members):
-    return RTX_DATA_MODEL.getTaskId(tcbPtr, members)
-
-def getDisplayableTaskId(tcbPtr, members):
-    return RTX_DATA_MODEL.getDisplayableTaskId(tcbPtr, members)
-
 def makeNumberCell(members, name):
     return createNumberCell(members[name].readAsNumber() if (name in members) else None)
-    
+
 def makeAddressCell(members, name):
-    return createAddressCell(member[name].readAsAddress())
+    return createAddressCell(members[name].readAsAddress())
 
 def makeAddressOfCell(members, name):
-    return createAddressCell(member[name].getLocationAddress())
+    return createAddressCell(members[name].getLocationAddress())
 
 def makeNameCell(members, name):
     return createTextCell(getSimpleName(members, name))
 
 def makeTaskIdCell(tcbPtr, members):
-    return createTextCell(RTX_DATA_MODEL.getDisplayableTaskId(tcbPtr, members))
+    return createTextCell(Rtx5.getDisplayableTaskId(tcbPtr, members))
 
 def makeTaskCell(members, name):
     return makeTaskIdCell(members[name], members[name].dereferencePointer().getStructureMembers())
 
 def makeStateCell(members):
-    return createTextCell(getTaskState(members["state"].readAsNumber(), members))
+    return createTextCell(Rtx5.getTaskState(members["state"].readAsNumber(), members))
 
 def makeTaskWaitersCell(members, name):
     tcbPtr = members[name]
@@ -72,7 +47,7 @@ def makeTaskWaitersCell(members, name):
 
     while nonNullPtr(tcbPtr):
         members = getPtrMemBers(tcbPtr)
-        result.append(str(RTX_DATA_MODEL.getDisplayableTaskId(tcbPtr, members)))
+        result.append(str(Rtx5.getDisplayableTaskId(tcbPtr, members)))
         tcbPtr = members["thread_next"]
 
     return createTextCell(', '.join(result))
@@ -86,27 +61,9 @@ def getSimpleName(members, name):
 
     return location
 
-def getTaskState(stateId, members=None):
-    return RTX_DATA_MODEL.getTaskState(stateId, members)
-    
 def dereferenceThreadPointer(tcbPtr):
-    return tcbPtr.dereferencePointer(getCType("Thread"))
+    return tcbPtr.dereferencePointer(Rtx5.getCType("Thread"))
 
-def isStackOverflowCheckEnabled(dbg):
-    if RTX_DATA_MODEL.isStackOverflowCheckEnabled(dbg):
-        return "system.stack_overflow_check.yes"
-    else:
-        return "system.stack_overflow_check.no"
-
-def isStackUsageWatermarkEnabled(dbg):
-    if RTX_DATA_MODEL.isStackUsageWatermarkEnabled(dbg):
-        return "system.stack_usage_watermark.yes"
-    else:
-        return "system.stack_usage_watermark.no"
-
-def getStackSize(members, dbg):
-    return RTX_DATA_MODEL.getStackSize(members, dbg)   
-    
 def nextPtr(ptr, nextMemberName):
     return getPtrMemBers(ptr)[nextMemberName]
 
@@ -136,7 +93,7 @@ class RtxTable(Table):
         return list(map(lambda cbPtr: self.createRecordFromControlBlock(cbPtr, dbg), self.getControlBlocks(dbg)))
 
     def getControlBlocks(self, dbg):
-        return getActiveTasks(dbg)
+        return Rtx5.getActiveTasks(dbg)
 
     def createRecordFromControlBlock(self, cbPtr, dbg):
         raise NotImplementedError
@@ -165,7 +122,7 @@ class RtxInterTaskCommTable(RtxTable):
         return records
 
     def createRecordFromControlBlock(self, threadPrev, dbg):
-        members = threadPrev.dereferencePointer(getCType(self.tcbType)).getStructureMembers()
+        members = threadPrev.dereferencePointer(Rtx5.getCType(self.tcbType)).getStructureMembers()
 
         if (members["id"].readAsNumber() == getControlBlockId(self.tcbType)):
             return [function(members, threadPrev) for function in self.functions]

@@ -1,11 +1,6 @@
 # Copyright (C) 2013-2015,2017,2018 Arm Limited (or its affiliates). All rights reserved.
 
 from osapi import *
-from utils import getTaskId
-from utils import getDisplayableTaskId
-from utils import getTaskState
-from utils import getActiveTasks
-from utils import getCurrentTask
 from utils import dereferenceThreadPointer
 from utils import getSimpleName
 from utils import isNullPtr
@@ -280,16 +275,16 @@ NEON_REGISTERS_MAP = {"S0": 128L,
 class ContextsProvider(ExecutionContextsProvider):
 
     def getCurrentOSContext(self, debugger):
-        tcbPtr = getCurrentTask(debugger)
+        tcbPtr = Rtx5.getCurrentTask(debugger)
 
         # Synthesises a "NULL" task in this case
         if isNullPtr(tcbPtr):
-            return ExecutionContext(-1, "NULL", getTaskState(2))
+            return ExecutionContext(-1, "NULL", Rtx5.getTaskState(2))
         else:
             return self.createContextFromTaskControlBlock(debugger, tcbPtr)
 
     def getAllOSContexts(self, debugger):
-        return list(map(lambda ptr: self.createContextFromTaskControlBlock(debugger, ptr), getActiveTasks(debugger)))
+        return list(map(lambda ptr: self.createContextFromTaskControlBlock(debugger, ptr), Rtx5.getActiveTasks(debugger)))
 
     def getOSContextSavedRegister(self, debugger, context, name):
         offset = context.getAdditionalData()["register_map"].get(name, None)
@@ -308,11 +303,11 @@ class ContextsProvider(ExecutionContextsProvider):
     def createContextFromTaskControlBlock(self, debugger, tcbPtr):
         members = dereferenceThreadPointer(tcbPtr).getStructureMembers()
 
-        id      = getTaskId(tcbPtr, members)
+        id      = Rtx5.getTaskId(tcbPtr, members)
         name    = getSimpleName(members,"thread_addr")
-        state   = getTaskState(members["state"].readAsNumber())
+        state   = Rtx5.getTaskState(members["state"].readAsNumber())
 
-        context = ExecutionContext(id, name, state, getDisplayableTaskId(tcbPtr, members))
+        context = ExecutionContext(id, name, state, Rtx5.getDisplayableTaskId(tcbPtr, members))
 
         stackPointer = members["sp"].readAsAddress()
         context.getAdditionalData()["tsk_stack"] = stackPointer

@@ -1,11 +1,10 @@
 # Copyright (C) 2018 Arm Limited (or its affiliates). All rights reserved.
 
 from itertools import chain
-
 from osapi import TEXT
 from rtxIterator import *
 
-class RtxInfoV5:
+class Rtx5:
 
     KERNEL_STATE_READY       = 1
     KERNEL_STATE_RUNNING     = 2
@@ -25,7 +24,6 @@ class RtxInfoV5:
         'MessageQueue'    : 8
     }
 
-
     kernelState = {
         0                 : 'osKernelInactive',         # Inactive.
         1                 : 'osKernelReady',            # Ready.
@@ -34,7 +32,6 @@ class RtxInfoV5:
         4                 : 'osKernelSuspended',        # Suspended.
         -1                : 'osKernelError',            # Error.
     }
-
 
     THREAD_BLOCKED_STATE_ID  = 3
 
@@ -54,59 +51,73 @@ class RtxInfoV5:
         (THREAD_BLOCKED_STATE_ID | 0x80) : "WAIT_MESSAGE_GET",
         (THREAD_BLOCKED_STATE_ID | 0x90) : "WAIT_MESSAGE_PUT"
     }
-
-    def isKernelInitialised(self, dbg):
+    
+    @classmethod
+    def isKernelInitialised(cls, dbg):
         kernel_state = dbg.evaluateExpression("osRtxInfo.kernel.state").readAsNumber()
-        return (kernel_state==RtxInfoV5.KERNEL_STATE_READY) or (kernel_state==RtxInfoV5.KERNEL_STATE_RUNNING)
-
-    def getKernelState(self, dbg):
+        return (kernel_state==cls.KERNEL_STATE_READY) or (kernel_state==cls.KERNEL_STATE_RUNNING)
+    
+    @classmethod
+    def getKernelState(cls, dbg):
         kernel_state = dbg.evaluateExpression("osRtxInfo.kernel.state").readAsNumber()
-        return RtxInfoV5.kernelState[kernel_state]
-
-    def getCType(self, cbName):
+        return cls.kernelState[kernel_state]
+    
+    @classmethod
+    def getCType(cls, cbName):
         return "osRtx" + cbName + "_t*"
-
-    def getActiveTasks(self, dbg):
+        
+    @classmethod
+    def getActiveTasks(cls, dbg):
         return chain(toIterator(dbg, "osRtxInfo.thread.run.curr", ""),
                  toIterator(dbg, "osRtxInfo.thread.ready.thread_list", "thread_next"),
                  toIterator(dbg, "osRtxInfo.thread.delay_list", "delay_next"),
                  toIterator(dbg, "osRtxInfo.thread.wait_list",  "delay_next"))
 
-    def getTaskIdType(self):
+    @classmethod
+    def getTaskIdType(cls):
         return TEXT #address
-
-    def getTaskId(self, tcbPtr, members):
+    
+    @classmethod
+    def getTaskId(cls, tcbPtr, members):
         return tcbPtr.readAsNumber()
 
-    def getDisplayableTaskId(self, tcbPtr, members):
-        return "0x" + str(self.getTaskId(tcbPtr, members))
-
-    def getCurrentTask(self, dbg):
+    @classmethod
+    def getDisplayableTaskId(cls, tcbPtr, members):
+        return "0x" + str(cls.getTaskId(tcbPtr, members))
+    
+    @classmethod
+    def getCurrentTask(cls, dbg):
         return dbg.evaluateExpression("osRtxInfo.thread.run.curr")
 
-    def getTaskState(self, stateId, members=None):
-        if((stateId & 0x0F) != RtxInfoV5.THREAD_BLOCKED_STATE_ID):
+    @classmethod
+    def getTaskState(cls, stateId, members=None):
+        if((stateId & 0x0F) != cls.THREAD_BLOCKED_STATE_ID):
             stateId = stateId & 0x0F
 
-        name = RtxInfoV5.THREAD_STATES[stateId]
+        name = cls.THREAD_STATES[stateId]
 
         if (members and ((name == "WAIT_THREAD_FLAGS") or (name == "WAIT_EVENT_FLAGS"))):
             flagsOption = members["flags_options"].readAsNumber()
-            name += "_ALL" if ((flagsOption & RtxInfoV5.OS_FLAGS_WAIT_ALL) != 0) else "_ANY"
+            name += "_ALL" if ((flagsOption & cls.OS_FLAGS_WAIT_ALL) != 0) else "_ANY"
 
         return name if name else str(stateId)
+        
+    @classmethod
+    def getControlBlockIdentifiers(cls):
+        return cls.ControlBlockIdentifier
 
-    def getControlBlockIdentifiers(self):
-        return RtxInfoV5.ControlBlockIdentifier
-
-    def getStackInfo(self, dbg):
+    @classmethod
+    def getStackInfo(cls, dbg):
         return dbg.evaluateExpression("osRtxConfig.flags").readAsNumber()
 
-    def isStackUsageWatermarkEnabled(self, dbg):
-        return (self.getStackInfo(dbg) & 0x4) != 0
+    @classmethod
+    def isStackUsageWatermarkEnabled(cls, dbg):
+        return (cls.getStackInfo(dbg) & 0x4) != 0
 
-    def isStackOverflowCheckEnabled(self, dbg):
-        return (self.getStackInfo(dbg) & 0x2) != 0
+    @classmethod
+    def isStackOverflowCheckEnabled(cls, dbg):
+        return (cls.getStackInfo(dbg) & 0x2) != 0
 
-    def getStackSize(self, members, dbg):
+    @classmethod
+    def getStackSize(cls, members, dbg):
         return members["stack_size"].readAsNumber()

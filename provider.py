@@ -13,6 +13,7 @@ from memorypools import MemoryPools
 from mutexes import Mutexes
 from semaphores import Semaphores
 from system import System
+from rtxInfo import Rtx5
 
 # this script effectively implements com.arm.debug.extension.os.IOSProvider
 
@@ -24,7 +25,7 @@ def getDataModel():
 
 def isOSInitialised(debugger):
     try:
-        return debugger.evaluateExpression("osRtxInfo.kernel.state").readAsNumber() >= 1
+        return Rtx5.isKernelInitialised(debugger)
     except DebugSessionException:
         return False;
 
