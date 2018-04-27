@@ -28,7 +28,9 @@ class MessageQueues(RtxInterTaskCommTable):
                      lambda members, prlnk: makeAddressCell(members, "msg_last")]
 
         RtxInterTaskCommTable.__init__(self, id, fields, functions, "MessageQueue")
-
+    def getControlBlocks(self, dbg):
+        return super(RtxInterTaskCommTable, self).getControlBlocks(dbg)
+        
     def makeStateCell(self, members):
         waitingTasksPtr = members["thread_list"]
 

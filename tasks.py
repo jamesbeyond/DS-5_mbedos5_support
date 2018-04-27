@@ -41,7 +41,7 @@ class Tasks(RtxTable):
          # it is required to sum the delta_time members of all previous tasks in the delay list.
         delay = 0
         if (members["delay"].readAsNumber() != OS_WAIT_FOREVER):
-            for tcbPtr in pointerToIter(tcbPtr, "delay_prev", getCType("Thread")):
+            for tcbPtr in pointerToIter(tcbPtr, "delay_prev", Rtx5.getCType("Thread")):
                 delay += dereferenceThreadPointer(tcbPtr).getStructureMembers()["delay"].readAsNumber()
 
         return createNumberCell(delay if (delay > 0) else None)

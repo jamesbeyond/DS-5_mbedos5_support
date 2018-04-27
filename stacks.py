@@ -32,9 +32,9 @@ class Stacks(RtxTable):
         # stack (I don't understand why), and likewise $SP will not be correct if we start
         # executing OS code. For now we will stay with RTX's, out of date, pointer as it
         # always gives a sane value, even if it is not up to date.
-        stackBase = getMember(members,"stack_mem").readAsAddress()
-        stackPtr  = getMember(members,"sp").readAsAddress()
-        stackSize = getStackSize(members, debugger)
+        stackBase = members["stack_mem"].readAsAddress()
+        stackPtr  = members["sp"].readAsAddress()
+        stackSize = Rtx5.getStackSize(members, debugger)
 
         # Populate the cells
         taskIdCell    = makeTaskIdCell(tcbPtr, members)
@@ -144,7 +144,7 @@ def getStackPositionAsPercentage(stackBase, stackSize, stackPos):
 # Creates the high-water mark cell. If enabled this is expressed as a percentage.
 def makeStackWatermarkCell(debugger, stackBase, stackSize, stackPtr):
     # Check if the stack watermark feature is enabled (stored in os_stack_info)
-    if (isStackUsageWatermarkEnabled(debugger)):
+    if (Rtx5.isStackUsageWatermarkEnabled(debugger)):
         highUsageAddr = calculateHighUsageAddr(debugger, stackBase, stackSize, stackPtr)
         return getStackPositionAsPercentage(stackBase, stackSize, highUsageAddr)
     else:

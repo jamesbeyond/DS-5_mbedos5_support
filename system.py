@@ -19,7 +19,7 @@ class System(Table):
 
 
         kernelId          = debugSession.evaluateExpression("osRtxInfo.os_id").readAsNullTerminatedString()
-        kernel_state      = getKernelState(debugSession)
+        kernel_state      = Rtx5.getKernelState(debugSession)
         kernel_tick_count = debugSession.evaluateExpression("osRtxInfo.kernel.tick").readAsNumber()
         robin_tick_count  = debugSession.evaluateExpression("osRtxInfo.thread.robin.tick").readAsNumber()
 
@@ -41,7 +41,7 @@ class System(Table):
         records.append(self.buildRecord("system.record.robin_timeout", robin_timeout))
 
         (defaultStackSize, thread_obj_mem, num_user_thread, num_user_thread_def_stack, total_user_stack_size) = self.getThreadConfiguration(debugSession)
-        nbOfActiveTasks = sum(1 for _ in getActiveTasks(debugSession))
+        nbOfActiveTasks = sum(1 for _ in Rtx5.getActiveTasks(debugSession))
 
         records.append(self.buildRecord("system.record.global_dyn_mem", "Base:%s, Size:%d, Used:%d" % (toHex(dynMemBase.readAsNumber()), dynMemSize, used)))
         records.append(self.buildRecord("system.record.thr_mem_pool", "Enabled" if thread_obj_mem else "Disabled"))
@@ -49,8 +49,8 @@ class System(Table):
         records.append(self.buildRecord("system.record.num_user_thread_def_stack", num_user_thread_def_stack))
         records.append(self.buildRecord("system.record.total_user_stack", toHex(total_user_stack_size)))
         records.append(self.buildRecord("system.record.default_stack_size", toHex(defaultStackSize)))
-        records.append(self.buildRecord("system.record.stack_overflow_check", isStackOverflowCheckEnabled(debugSession)))
-        records.append(self.buildRecord("system.record.stack_usage_watermark", isStackUsageWatermarkEnabled(debugSession)))
+        records.append(self.buildRecord("system.record.stack_overflow_check", Rtx5.isStackOverflowCheckEnabled(debugSession)))
+        records.append(self.buildRecord("system.record.stack_usage_watermark", Rtx5.isStackUsageWatermarkEnabled(debugSession)))
         records.append(self.buildRecord("system.record.active_tasks", nbOfActiveTasks))
         records.append(self.buildRecord("system.record.user_timers", self.getUserTimers(debugSession)))
 
